@@ -23,26 +23,51 @@ import { db, isFirebaseConfigured } from '../firebase'
 
 const DEMO_WISHES_KEY = 'bma_demo_wishes'
 
+// Optional Google Apps Script web-app URL. When set, registrations are
+// appended as rows to a Google Sheet (see README "Google Sheet setup").
+const SHEETS_URL = import.meta.env.VITE_SHEETS_URL
+
 /**
  * Persist a student's registration.
+ *
+ * Destination priority:
+ *   1. Google Sheet  (if VITE_SHEETS_URL is set)
+ *   2. Firestore     (if Firebase env vars are set)
+ *   3. Demo mode     (no backend — resolves locally)
+ *
  * @param {{fullName:string, mobile:string, rollNumber:string}} data
  */
 export async function saveRegistration(data) {
-  const payload = {
+  const clean = {
     fullName: data.fullName.trim(),
     mobile: data.mobile.trim(),
     rollNumber: data.rollNumber.trim().toUpperCase(),
-    createdAt: isFirebaseConfigured ? serverTimestamp() : new Date().toISOString(),
   }
 
-  if (!isFirebaseConfigured || !db) {
-    // Demo mode — pretend it succeeded after a short delay.
-    await new Promise((r) => setTimeout(r, 700))
-    return { id: `demo-${Date.now()}`, demo: true }
+  // 1. Google Sheet ---------------------------------------------------
+  if (SHEETS_URL) {
+    const body = new URLSearchParams({
+      ...clean,
+      createdAt: new Date().toISOString(),
+    })
+    // Apps Script doesn't send CORS headers, so we use no-cors: the row
+    // is still written; we just can't read the (opaque) response.
+    await fetch(SHEETS_URL, { method: 'POST', mode: 'no-cors', body })
+    return { id: `sheet-${Date.now()}`, demo: false }
   }
 
-  const ref = await addDoc(collection(db, 'registrations'), payload)
-  return { id: ref.id, demo: false }
+  // 2. Firestore ------------------------------------------------------
+  if (isFirebaseConfigured && db) {
+    const ref = await addDoc(collection(db, 'registrations'), {
+      ...clean,
+      createdAt: serverTimestamp(),
+    })
+    return { id: ref.id, demo: false }
+  }
+
+  // 3. Demo mode ------------------------------------------------------
+  await new Promise((r) => setTimeout(r, 700))
+  return { id: `demo-${Date.now()}`, demo: true }
 }
 
 /** Read the current total number of wishes. */
