@@ -33,9 +33,9 @@ export default function Navbar() {
       >
         <a href="#top" className="flex items-center gap-3">
           <img
-            src="/logo.svg"
+            src="https://storebybm.com/cdn/shop/files/66616e0050ff99708325d1d7.png?v=1740412439&width=140"
             alt="Budding Mariners"
-            className="h-11 w-11 rounded-full"
+            className="h-11 w-auto"
           />
           <span className="font-display text-lg font-800 uppercase leading-none tracking-wide text-white md:text-xl">
             Budding{' '}

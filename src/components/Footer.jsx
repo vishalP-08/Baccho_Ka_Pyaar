@@ -32,9 +32,9 @@ export default function Footer() {
           <motion.div {...fade(0)}>
             <div className="flex items-center gap-3">
               <img
-                src="/logo.svg"
+                src="https://storebybm.com/cdn/shop/files/66616e0050ff99708325d1d7.png?v=1740412439&width=140"
                 alt="Budding Mariners"
-                className="h-12 w-12 rounded-full"
+                className="h-12 w-auto"
               />
               <span className="font-display text-xl font-800 uppercase tracking-wide text-white">
                 Budding <span className="text-ocean-400">Mariners</span>
