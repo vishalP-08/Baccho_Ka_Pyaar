@@ -32,16 +32,18 @@ export default function Navbar() {
         }`}
       >
         <a href="#top" className="flex items-center gap-3">
-          <span className="text-2xl">⚓</span>
-          <span className="font-display text-lg font-700 leading-tight text-white md:text-xl">
-            Budding Mariners
-            <span className="block text-xs font-body font-400 tracking-[0.3em] text-ocean-400">
-              ACADEMY
-            </span>
+          <img
+            src="/logo.svg"
+            alt="Budding Mariners"
+            className="h-11 w-11 rounded-full"
+          />
+          <span className="font-display text-lg font-800 uppercase leading-none tracking-wide text-white md:text-xl">
+            Budding{' '}
+            <span className="text-ocean-400">Mariners</span>
           </span>
         </a>
 
-        <ul className="hidden items-center gap-8 text-sm font-500 text-slate-300 md:flex">
+        <ul className="hidden items-center gap-8 text-sm font-600 text-slate-300 md:flex">
           {LINKS.map((l) => (
             <li key={l.href}>
               <a
@@ -56,9 +58,9 @@ export default function Navbar() {
 
         <a
           href="#register"
-          className="rounded-full border border-ocean-400/40 bg-ocean-500/10 px-5 py-2 text-sm font-600 text-ocean-400 transition-all duration-200 hover:bg-ocean-500/20 hover:shadow-[0_0_20px_rgba(56,189,248,0.4)]"
+          className="rounded-full bg-ocean-400 px-5 py-2 text-sm font-700 text-black transition-all duration-200 hover:bg-gold-400 hover:shadow-[0_0_22px_rgba(242,201,76,0.55)]"
         >
-          Join Mock Test
+          Join Now
         </a>
       </nav>
     </motion.header>

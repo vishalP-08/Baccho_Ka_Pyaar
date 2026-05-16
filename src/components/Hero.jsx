@@ -45,8 +45,8 @@ export default function Hero() {
           variants={item}
           className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-slate-300 md:text-lg"
         >
-          Budding Mariners Academy wishes every aspirant success in the{' '}
-          <span className="font-600 text-ocean-400">IMU-CET 2026</span>{' '}
+          Budding Mariners wishes every aspirant success in the{' '}
+          <span className="font-700 text-ocean-400">IMU-CET 2026</span>{' '}
           Examination. Your voyage to the merchant navy begins here.
         </motion.p>
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 
 // IMU-CET 2026 target date. Adjust here if the official date changes.
-const EXAM_DATE = new Date('2026-06-06T10:00:00+05:30')
+const EXAM_DATE = new Date('2026-05-24T10:00:00+05:30')
 
 function getRemaining() {
   const diff = Math.max(0, EXAM_DATE.getTime() - Date.now())

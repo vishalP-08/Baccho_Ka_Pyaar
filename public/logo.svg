@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Budding Mariners logo">
+  <circle cx="100" cy="100" r="100" fill="#050505"/>
+  <!-- left outline triangle -->
+  <path d="M62 70 L26 152 L98 152 Z" fill="none" stroke="#E9CC4B" stroke-width="7" stroke-linejoin="round"/>
+  <!-- right outline triangle -->
+  <path d="M138 70 L102 152 L174 152 Z" fill="none" stroke="#E9CC4B" stroke-width="7" stroke-linejoin="round"/>
+  <!-- center filled triangle -->
+  <path d="M100 52 L70 154 L130 154 Z" fill="#E9CC4B"/>
+</svg>

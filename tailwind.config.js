@@ -4,31 +4,45 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Backgrounds — Budding Mariners is near-black
         navy: {
-          900: '#020c1b',
-          800: '#041326',
-          700: '#072138',
-          600: '#0a3055',
+          900: '#000000',
+          800: '#080808',
+          700: '#121212',
+          600: '#1c1c1c',
         },
+        // Primary brand accent — gold/yellow (aliased as `ocean` so the
+        // whole UI re-skins without touching every component class)
         ocean: {
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
+          400: '#F2C94C',
+          500: '#E6B833',
+          600: '#C99A1F',
         },
         gold: {
-          400: '#fbbf24',
-          500: '#f59e0b',
+          400: '#F7E08A',
+          500: '#F2C94C',
         },
       },
       fontFamily: {
-        display: ['"Cormorant Garamond"', 'serif'],
+        display: ['Poppins', 'system-ui', 'sans-serif'],
         body: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+      },
+      // Make numeric weight utilities (font-700 etc.) valid so headings
+      // actually render bold like the brand site.
+      fontWeight: {
+        400: '400',
+        500: '500',
+        600: '600',
+        700: '700',
+        800: '800',
       },
       backgroundImage: {
         'ocean-gradient':
-          'linear-gradient(160deg, #020c1b 0%, #041326 35%, #072138 70%, #0a3055 100%)',
+          'linear-gradient(165deg, #000000 0%, #060606 40%, #0a0d14 72%, #11192a 100%)',
         'glow-radial':
-          'radial-gradient(circle at 50% 0%, rgba(56,189,248,0.18) 0%, rgba(2,12,27,0) 60%)',
+          'radial-gradient(circle at 50% 0%, rgba(242,201,76,0.14) 0%, rgba(0,0,0,0) 60%)',
+        'stats-gradient':
+          'linear-gradient(180deg, #0b1220 0%, #161f33 100%)',
       },
       keyframes: {
         float: {
@@ -40,8 +54,8 @@ export default {
           '100%': { transform: 'translateX(-50%)' },
         },
         glowPulse: {
-          '0%, 100%': { boxShadow: '0 0 25px rgba(56,189,248,0.45)' },
-          '50%': { boxShadow: '0 0 55px rgba(56,189,248,0.85)' },
+          '0%, 100%': { boxShadow: '0 0 25px rgba(242,201,76,0.40)' },
+          '50%': { boxShadow: '0 0 55px rgba(242,201,76,0.80)' },
         },
         heartBeat: {
           '0%, 100%': { transform: 'scale(1)' },
