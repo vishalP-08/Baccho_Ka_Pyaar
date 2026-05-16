@@ -1,53 +1,69 @@
 /**
  * Budding Mariners — IMU-CET 2026 registration collector
  * ------------------------------------------------------
- * This script receives registrations from the website form and
- * appends them as rows in this Google Sheet.
+ * Appends each website registration into THIS Google Sheet,
+ * matching the existing header layout:
  *
- * SETUP (one time, ~3 minutes):
+ *   A1: Full Name   B1: Mobile Number   C1: IMU-CET Roll Number
+ *   (D1: Submitted At — added automatically, optional/harmless)
  *
- * 1. Create a new Google Sheet (sheets.new).
- * 2. Extensions → Apps Script.
- * 3. Delete any sample code, paste THIS entire file, click 💾 Save.
- * 4. Click "Deploy" → "New deployment".
- *      • Type:            Web app  (click the gear ⚙ → Web app)
- *      • Description:      BM registrations
+ * IMPORTANT: create this script FROM the sheet itself so it is
+ * bound to it — open your sheet:
+ * https://docs.google.com/spreadsheets/d/1BIkrIdCUXgjT3vXYhkZAtzf2gWg96IosIUQVsTQ5zM8/edit
+ * → Extensions → Apps Script, then paste this file.
+ *
+ * SETUP (one time, ~2 minutes):
+ *
+ * 1. In that sheet: Extensions → Apps Script.
+ * 2. Delete sample code, paste THIS entire file, click 💾 Save.
+ * 3. Deploy → New deployment → (gear ⚙) Web app
  *      • Execute as:      Me
  *      • Who has access:  Anyone
- *    → Deploy → Authorize access → choose your account → Allow.
- * 5. Copy the "Web app URL" (ends with /exec).
- * 6. In your website project, set this in .env  AND  in Vercel/Netlify
- *    environment variables, then redeploy:
+ *    → Deploy → Authorize access → your account → Allow.
+ * 4. Copy the "Web app URL" (ends with /exec).
+ * 5. In Netlify → Site configuration → Environment variables, add:
+ *      VITE_SHEETS_URL = https://script.google.com/macros/s/XXXX/exec
+ *    Then Deploys → Trigger deploy → Deploy site (env changes need a
+ *    fresh build). Add the same line to your local .env too.
  *
- *      VITE_SHEETS_URL=https://script.google.com/macros/s/XXXX/exec
+ * Test: open the /exec URL in a browser — it should say the endpoint
+ * is running. Then submit the form; a row appears instantly.
  *
- * Submissions now appear instantly in the "Registrations" tab. Done!
+ * After changing this script later: Deploy → Manage deployments →
+ * edit (pencil) → Version: New version → Deploy (URL stays the same).
  *
- * To change the script later you must "Deploy → Manage deployments →
- * edit (pencil) → Version: New version → Deploy" (same URL stays valid).
+ * You can keep the sheet PRIVATE — the script writes as you.
  */
+
+// Which tab to write to. gid=0 is the first sheet. Leave as-is unless
+// you want a specific tab, then set SHEET_NAME = 'YourTabName'.
+var SHEET_NAME = '';
+
+function targetSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return SHEET_NAME ? ss.getSheetByName(SHEET_NAME) : ss.getSheets()[0];
+}
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(30000); // avoid two submissions writing the same row
+  lock.tryLock(30000); // prevent two submissions clobbering one row
 
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('Registrations');
-    if (!sheet) {
-      sheet = ss.insertSheet('Registrations');
-    }
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(['Timestamp', 'Full Name', 'Mobile', 'Roll Number']);
-      sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+    var sheet = targetSheet_();
+    var p = (e && e.parameter) || {};
+
+    // Ensure the optional timestamp header exists in D1 (non-destructive).
+    if (!sheet.getRange('D1').getValue()) {
+      sheet.getRange('D1').setValue('Submitted At').setFontWeight('bold');
     }
 
-    var p = (e && e.parameter) || {};
+    // Append in the exact column order of your headers:
+    // A = Full Name, B = Mobile Number, C = IMU-CET Roll Number, D = time
     sheet.appendRow([
-      new Date(),
       p.fullName || '',
       p.mobile || '',
       p.rollNumber || '',
+      new Date(),
     ]);
 
     return ContentService
@@ -62,7 +78,7 @@ function doPost(e) {
   }
 }
 
-// Lets you open the /exec URL in a browser to confirm it's live.
+// Lets you open the /exec URL in a browser to confirm it is live.
 function doGet() {
   return ContentService
     .createTextOutput('Budding Mariners registration endpoint is running ✅')
