@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion'
 
 const DATES = [
-  { day: '18th', tag: 'Mock Test 1', note: 'Full-length simulation' },
-  { day: '20th', tag: 'Mock Test 2', note: 'Sectional + analysis' },
-  { day: '22nd', tag: 'Mock Test 3', note: 'Final confidence run' },
+  { day: '20th', tag: 'Mock Test 1', note: 'Full-length AI-proctored simulation' },
+  { day: '22nd', tag: 'Mock Test 2', note: 'Final confidence run + analysis' },
 ]
 
 const fade = {
@@ -35,11 +34,11 @@ export default function MockTests() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mx-auto mt-4 max-w-xl text-slate-300"
         >
-          Three carefully crafted mock tests to sharpen your speed, accuracy
-          and exam temperament — completely free for every aspirant.
+          Carefully crafted mock tests to sharpen your speed, accuracy and exam
+          temperament — completely free for every aspirant.
         </motion.p>
 
-        <div className="mt-14 grid gap-6 sm:grid-cols-3">
+        <div className="mt-14 grid gap-6 sm:max-w-2xl sm:mx-auto sm:grid-cols-2">
           {DATES.map((d, i) => (
             <motion.div
               key={d.day}

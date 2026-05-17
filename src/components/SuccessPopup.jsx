@@ -34,7 +34,7 @@ export default function SuccessPopup({ open, name, onClose }) {
             </h3>
             <p className="mt-3 text-slate-300">
               Your registration for the FREE IMU-CET mock tests is confirmed.
-              Smooth seas and full sails — we&apos;ll see you on the 18th, 20th
+              Smooth seas and full sails — we&apos;ll see you on the 20th
               &amp; 22nd!
             </p>
             <button

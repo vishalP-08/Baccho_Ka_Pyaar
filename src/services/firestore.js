@@ -24,18 +24,37 @@ import { db, isFirebaseConfigured } from '../firebase'
 const DEMO_WISHES_KEY = 'bma_demo_wishes'
 
 // Optional Google Apps Script web-app URL. When set, registrations are
-// appended as rows to a Google Sheet (see README "Google Sheet setup").
+// appended as rows to a Google Sheet and the photo is saved to a Drive
+// folder (see google-apps-script.gs / README for setup).
 const SHEETS_URL = import.meta.env.VITE_SHEETS_URL
 
+/** Read a File as a base64 string (without the data: URL prefix). */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = String(reader.result)
+      const comma = result.indexOf(',')
+      resolve({
+        base64: comma >= 0 ? result.slice(comma + 1) : result,
+        name: file.name,
+        type: file.type || 'image/jpeg',
+      })
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
 /**
- * Persist a student's registration.
+ * Persist a student's registration (and passport photo).
  *
  * Destination priority:
- *   1. Google Sheet  (if VITE_SHEETS_URL is set)
- *   2. Firestore     (if Firebase env vars are set)
- *   3. Demo mode     (no backend — resolves locally)
+ *   1. Google Sheet + Drive  (if VITE_SHEETS_URL is set)
+ *   2. Firestore             (if Firebase env vars are set; no photo)
+ *   3. Demo mode             (no backend — resolves locally)
  *
- * @param {{fullName:string, mobile:string, rollNumber:string}} data
+ * @param {{fullName:string, mobile:string, rollNumber:string, photo?:File}} data
  */
 export async function saveRegistration(data) {
   const clean = {
@@ -44,12 +63,18 @@ export async function saveRegistration(data) {
     rollNumber: data.rollNumber.trim().toUpperCase(),
   }
 
-  // 1. Google Sheet ---------------------------------------------------
+  // 1. Google Sheet + Drive ------------------------------------------
   if (SHEETS_URL) {
     const body = new URLSearchParams({
       ...clean,
       createdAt: new Date().toISOString(),
     })
+    if (data.photo) {
+      const { base64, name, type } = await fileToBase64(data.photo)
+      body.set('photoBase64', base64)
+      body.set('photoName', name)
+      body.set('photoType', type)
+    }
     // Apps Script doesn't send CORS headers, so we use no-cors: the row
     // is still written; we just can't read the (opaque) response.
     await fetch(SHEETS_URL, { method: 'POST', mode: 'no-cors', body })

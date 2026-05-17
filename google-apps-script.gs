@@ -1,47 +1,62 @@
 /**
  * Budding Mariners — IMU-CET 2026 registration collector
  * ------------------------------------------------------
- * Appends each website registration into THIS Google Sheet,
- * matching the existing header layout:
+ * Appends each website registration into THIS Google Sheet and saves
+ * the uploaded passport photo into a Google Drive folder, writing the
+ * photo link back into the sheet.
  *
- *   A1: Full Name   B1: Mobile Number   C1: IMU-CET Roll Number
- *   (D1: Submitted At — added automatically, optional/harmless)
+ * Sheet columns (matches your existing headers):
+ *   A: Full Name   B: Mobile Number   C: IMU-CET Roll Number
+ *   D: Submitted At (auto)   E: Photo (auto — Drive link)
  *
- * IMPORTANT: create this script FROM the sheet itself so it is
- * bound to it — open your sheet:
- * https://docs.google.com/spreadsheets/d/1BIkrIdCUXgjT3vXYhkZAtzf2gWg96IosIUQVsTQ5zM8/edit
- * → Extensions → Apps Script, then paste this file.
+ * IMPORTANT: create this script FROM the sheet so it is bound to it.
+ * Open your sheet → Extensions → Apps Script → paste this file.
  *
- * SETUP (one time, ~2 minutes):
+ * SETUP (one time, ~3 minutes):
  *
- * 1. In that sheet: Extensions → Apps Script.
- * 2. Delete sample code, paste THIS entire file, click 💾 Save.
+ * 1. (Optional) Make a Drive folder for photos, open it, and copy the
+ *    folder ID from its URL (the part after /folders/). Paste it into
+ *    PHOTO_FOLDER_ID below. If you leave it blank, the script auto-
+ *    creates a folder called "BM IMU-CET 2026 Photos".
+ * 2. In your sheet: Extensions → Apps Script. Delete sample code,
+ *    paste THIS entire file, click 💾 Save.
  * 3. Deploy → New deployment → (gear ⚙) Web app
  *      • Execute as:      Me
  *      • Who has access:  Anyone
  *    → Deploy → Authorize access → your account → Allow.
+ *    (You'll be asked for Drive permission — that's for saving photos.)
  * 4. Copy the "Web app URL" (ends with /exec).
- * 5. In Netlify → Site configuration → Environment variables, add:
+ * 5. Netlify → Site configuration → Environment variables, add:
  *      VITE_SHEETS_URL = https://script.google.com/macros/s/XXXX/exec
- *    Then Deploys → Trigger deploy → Deploy site (env changes need a
- *    fresh build). Add the same line to your local .env too.
+ *    Then Deploys → Trigger deploy → Deploy site. Add the same line
+ *    to your local .env too.
  *
- * Test: open the /exec URL in a browser — it should say the endpoint
- * is running. Then submit the form; a row appears instantly.
+ * Test: open the /exec URL in a browser — it should say it's running.
+ * Then submit the form; a row + a photo link appear instantly.
  *
- * After changing this script later: Deploy → Manage deployments →
+ * After editing this script later: Deploy → Manage deployments →
  * edit (pencil) → Version: New version → Deploy (URL stays the same).
  *
- * You can keep the sheet PRIVATE — the script writes as you.
+ * Keep the sheet PRIVATE — the script runs as you.
  */
 
-// Which tab to write to. gid=0 is the first sheet. Leave as-is unless
-// you want a specific tab, then set SHEET_NAME = 'YourTabName'.
+// Paste a Drive folder ID here to store photos in a specific folder,
+// or leave '' to auto-create "BM IMU-CET 2026 Photos".
+var PHOTO_FOLDER_ID = '';
+
+// Which tab to write to. '' = first tab (gid=0). Set a name to override.
 var SHEET_NAME = '';
 
 function targetSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   return SHEET_NAME ? ss.getSheetByName(SHEET_NAME) : ss.getSheets()[0];
+}
+
+function photoFolder_() {
+  if (PHOTO_FOLDER_ID) return DriveApp.getFolderById(PHOTO_FOLDER_ID);
+  var name = 'BM IMU-CET 2026 Photos';
+  var existing = DriveApp.getFoldersByName(name);
+  return existing.hasNext() ? existing.next() : DriveApp.createFolder(name);
 }
 
 function doPost(e) {
@@ -52,18 +67,50 @@ function doPost(e) {
     var sheet = targetSheet_();
     var p = (e && e.parameter) || {};
 
-    // Ensure the optional timestamp header exists in D1 (non-destructive).
+    // Ensure optional headers exist (non-destructive).
     if (!sheet.getRange('D1').getValue()) {
       sheet.getRange('D1').setValue('Submitted At').setFontWeight('bold');
     }
+    if (!sheet.getRange('E1').getValue()) {
+      sheet.getRange('E1').setValue('Photo').setFontWeight('bold');
+    }
 
-    // Append in the exact column order of your headers:
-    // A = Full Name, B = Mobile Number, C = IMU-CET Roll Number, D = time
+    // Save the photo to Drive (if one was sent).
+    var photoUrl = '';
+    if (p.photoBase64) {
+      var safeRoll = String(p.rollNumber || 'NA').replace(/[^\w-]/g, '_');
+      var safeName = String(p.fullName || 'student').replace(/[^\w-]/g, '_');
+      var ext = (p.photoType === 'image/png') ? 'png' : 'jpg';
+      var fileName =
+        safeRoll + '_' + safeName + '_' + new Date().getTime() + '.' + ext;
+
+      var bytes = Utilities.base64Decode(p.photoBase64);
+      var blob = Utilities.newBlob(
+        bytes,
+        p.photoType || 'image/jpeg',
+        fileName,
+      );
+      var file = photoFolder_().createFile(blob);
+      try {
+        file.setSharing(
+          DriveApp.Access.ANYONE_WITH_LINK,
+          DriveApp.Permission.VIEW,
+        );
+      } catch (shareErr) {
+        // Domain policy may block link-sharing; the file is still saved
+        // in your folder and openable by you.
+      }
+      photoUrl = file.getUrl();
+    }
+
+    // Append in the exact column order:
+    // A Full Name | B Mobile | C Roll No | D Submitted At | E Photo
     sheet.appendRow([
       p.fullName || '',
       p.mobile || '',
       p.rollNumber || '',
       new Date(),
+      photoUrl,
     ]);
 
     return ContentService
