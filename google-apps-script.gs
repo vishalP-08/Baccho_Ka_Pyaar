@@ -245,44 +245,20 @@ function doPost(e) {
     var downloadUrl = 'https://drive.google.com/uc?export=download&id=' + pdfId;
     var viewUrl = pdfFile.getUrl();
 
-    // 3. Email (best-effort, attach the in-memory blob — no extra read)
+    // 3. Queue the email (sent in the background by a 1-min trigger,
+    //    so the website gets its response in ~2-4s instead of waiting).
     var email = String(p.email || '').trim();
     if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      try {
-        var schedule = TESTS.map(function (t) {
-          return (
-            '<li><strong>' +
-            t.name +
-            '</strong> — ' +
-            t.date +
-            ', ' +
-            t.time +
-            ' — <a href="' +
-            t.link +
-            '">Test link</a></li>'
-          );
-        }).join('');
-        MailApp.sendEmail({
-          to: email,
-          subject: 'Your IMU-CET 2026 Mock Test Timetable — Budding Mariners',
-          htmlBody:
-            '<p>Hi ' +
-            (p.fullName || 'Future Mariner') +
-            ',</p><p>Your registration is confirmed. Your personalised ' +
-            'timetable is attached as a PDF.</p>' +
-            '<p><strong>Your test schedule:</strong></p><ul>' +
-            schedule +
-            '</ul><p><strong>Instructions:</strong><br>' +
-            '• Give the test online using the direct link in your ' +
-            'timetable.<br>• Keep your photo ready — the exam is AI ' +
-            'Proctored and your identity will be verified.</p>' +
-            '<p>All the best! — Budding Mariners ⚓</p>',
-          attachments: [pdfBlob],
-          name: 'Budding Mariners',
-        });
-      } catch (mailErr) {
-        /* mail quota/permission — registration still succeeds */
-      }
+      queueSheet_().appendRow([
+        email,
+        p.fullName || '',
+        pdfId,
+        'PENDING',
+        0,
+        new Date(),
+        '',
+      ]);
+      ensureEmailTrigger_();
     }
 
     // 4. Append the row
@@ -306,6 +282,111 @@ function doPost(e) {
     return ContentService.createTextOutput(
       JSON.stringify({ result: 'error', message: String(err) }),
     ).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+ * Background email queue
+ *  - doPost only queues a row (instant); a time trigger sends mail.
+ *  - The queue lives in a "_EmailQueue" tab in this spreadsheet.
+ * ────────────────────────────────────────────────────────────── */
+
+function queueSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName('_EmailQueue');
+  if (!sh) {
+    sh = ss.insertSheet('_EmailQueue');
+    sh.appendRow([
+      'Email',
+      'Full Name',
+      'PDF File ID',
+      'Status',
+      'Attempts',
+      'Queued At',
+      'Updated At',
+    ]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/** Make sure the 1-minute email-processing trigger exists. */
+function ensureEmailTrigger_() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'processEmailQueue_') return;
+  }
+  ScriptApp.newTrigger('processEmailQueue_')
+    .timeBased()
+    .everyMinutes(1)
+    .create();
+}
+
+/** Runs every minute: sends any PENDING timetable emails. */
+function processEmailQueue_() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return;
+  try {
+    var sh = queueSheet_();
+    var values = sh.getDataRange().getValues();
+    var schedule = TESTS.map(function (t) {
+      return (
+        '<li><strong>' +
+        t.name +
+        '</strong> — ' +
+        t.date +
+        ', ' +
+        t.time +
+        ' — <a href="' +
+        t.link +
+        '">Test link</a></li>'
+      );
+    }).join('');
+
+    for (var r = 1; r < values.length; r++) {
+      var email = values[r][0];
+      var name = values[r][1];
+      var pdfId = values[r][2];
+      var status = values[r][3];
+      var attempts = Number(values[r][4] || 0);
+
+      if (status === 'SENT' || status === 'FAILED') continue;
+      if (!email || !pdfId) {
+        sh.getRange(r + 1, 4).setValue('FAILED');
+        continue;
+      }
+
+      try {
+        var blob = DriveApp.getFileById(pdfId).getBlob();
+        MailApp.sendEmail({
+          to: email,
+          subject: 'Your IMU-CET 2026 Mock Test Timetable — Budding Mariners',
+          htmlBody:
+            '<p>Hi ' +
+            (name || 'Future Mariner') +
+            ',</p><p>Your registration is confirmed. Your personalised ' +
+            'timetable is attached as a PDF.</p>' +
+            '<p><strong>Your test schedule:</strong></p><ul>' +
+            schedule +
+            '</ul><p><strong>Instructions:</strong><br>' +
+            '• Give the test online using the direct link in your ' +
+            'timetable.<br>• Keep your photo ready — the exam is AI ' +
+            'Proctored and your identity will be verified.</p>' +
+            '<p>All the best! — Budding Mariners ⚓</p>',
+          attachments: [blob],
+          name: 'Budding Mariners',
+        });
+        sh.getRange(r + 1, 4).setValue('SENT');
+        sh.getRange(r + 1, 7).setValue(new Date());
+      } catch (e) {
+        attempts++;
+        sh.getRange(r + 1, 5).setValue(attempts);
+        sh.getRange(r + 1, 4).setValue(attempts >= 3 ? 'FAILED' : 'PENDING');
+        sh.getRange(r + 1, 7).setValue(new Date());
+      }
+    }
   } finally {
     lock.releaseLock();
   }

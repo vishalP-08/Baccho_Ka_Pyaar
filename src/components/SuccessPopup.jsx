@@ -56,8 +56,8 @@ export default function SuccessPopup({ open, name, pdf, onClose }) {
                   button below.
                 </p>
                 <p className="mt-2 text-xs text-slate-400">
-                  ✉️ A copy has also been emailed to you — check your inbox
-                  (and spam folder).
+                  ✉️ A copy is also being emailed to you — it should arrive
+                  within a minute (check spam too).
                 </p>
                 <a
                   href={pdf.downloadUrl}

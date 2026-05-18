@@ -107,7 +107,7 @@ export default function RegistrationForm() {
   const [touched, setTouched] = useState({})
   const [submitting, setSubmitting] = useState(false)
   // Friendly countdown shown while the timetable PDF is generated.
-  const ESTIMATE = 20
+  const ESTIMATE = 8
   const [secsLeft, setSecsLeft] = useState(0)
   const timerRef = useRef(null)
 
@@ -430,8 +430,8 @@ export default function RegistrationForm() {
                 />
               </div>
               <p className="mt-2 text-center text-xs text-ocean-400">
-                ⏳ Building your personalised PDF &amp; emailing it — please
-                keep this page open.
+                ⏳ Building your personalised PDF timetable — please keep this
+                page open.
               </p>
             </div>
           )}
