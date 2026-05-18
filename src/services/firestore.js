@@ -20,6 +20,7 @@ import {
   setDoc,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
+import { compressImage } from '../utils/compressImage'
 
 const DEMO_WISHES_KEY = 'bma_demo_wishes'
 
@@ -54,13 +55,14 @@ function fileToBase64(file) {
  *   2. Firestore             (if Firebase env vars are set; no photo)
  *   3. Demo mode             (no backend — resolves locally)
  *
- * @param {{fullName:string, mobile:string, rollNumber:string, photo?:File}} data
+ * @param {{fullName:string, mobile:string, rollNumber:string, email:string, photo?:File}} data
  */
 export async function saveRegistration(data) {
   const clean = {
     fullName: data.fullName.trim(),
     mobile: data.mobile.trim(),
     rollNumber: data.rollNumber.trim().toUpperCase(),
+    email: (data.email || '').trim(),
   }
 
   // 1. Google Sheet + Drive ------------------------------------------
@@ -70,7 +72,8 @@ export async function saveRegistration(data) {
       createdAt: new Date().toISOString(),
     })
     if (data.photo) {
-      const { base64, name, type } = await fileToBase64(data.photo)
+      const compressed = await compressImage(data.photo)
+      const { base64, name, type } = await fileToBase64(compressed)
       body.set('photoBase64', base64)
       body.set('photoName', name)
       body.set('photoType', type)

@@ -11,7 +11,8 @@
  *
  * Sheet columns (matches your headers):
  *   A Full Name | B Mobile Number | C IMU-CET Roll Number
- *   D Submitted At | E Photo | F Timetable   (D/E/F auto-added)
+ *   D Submitted At | E Photo | F Timetable | G Email
+ *   (D/E/F/G auto-added)
  *
  * ─────────────────────────────────────────────────────────────
  * STEP 1 — PUT YOUR TEST LINKS HERE  (edit the `link:` values)
@@ -178,6 +179,8 @@ function doPost(e) {
       sheet.getRange('E1').setValue('Photo').setFontWeight('bold');
     if (!sheet.getRange('F1').getValue())
       sheet.getRange('F1').setValue('Timetable').setFontWeight('bold');
+    if (!sheet.getRange('G1').getValue())
+      sheet.getRange('G1').setValue('Email').setFontWeight('bold');
 
     // 1. Save photo to Drive
     var photoUrl = '';
@@ -205,7 +208,52 @@ function doPost(e) {
     var downloadUrl = 'https://drive.google.com/uc?export=download&id=' + pdfId;
     var viewUrl = pdfFile.getUrl();
 
-    // 3. Append the row
+    // 3. Email the timetable to the student (best-effort)
+    var email = String(p.email || '').trim();
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      try {
+        var schedule = TESTS.map(function (t) {
+          return (
+            '<li><strong>' +
+            t.name +
+            '</strong> — ' +
+            t.date +
+            ', ' +
+            t.time +
+            ' — <a href="' +
+            t.link +
+            '">Test link</a></li>'
+          );
+        }).join('');
+
+        MailApp.sendEmail({
+          to: email,
+          subject: 'Your IMU-CET 2026 Mock Test Timetable — Budding Mariners',
+          htmlBody:
+            '<p>Hi ' +
+            (p.fullName || 'Future Mariner') +
+            ',</p>' +
+            '<p>Your registration is confirmed. Your personalised ' +
+            'timetable is attached as a PDF.</p>' +
+            '<p><strong>Your test schedule:</strong></p><ul>' +
+            schedule +
+            '</ul>' +
+            '<p><strong>Instructions:</strong><br>' +
+            '• Give the test online using the direct link in your ' +
+            'timetable.<br>' +
+            '• Keep your photo ready — the exam is AI proctored and your ' +
+            'identity will be verified.</p>' +
+            '<p>All the best! — Budding Mariners ⚓</p>',
+          attachments: [pdfFile.getBlob()],
+          name: 'Budding Mariners',
+        });
+      } catch (mailErr) {
+        // Mail quota/permission issue — registration still succeeds;
+        // the student can still download the PDF from the website.
+      }
+    }
+
+    // 4. Append the row
     sheet.appendRow([
       p.fullName || '',
       p.mobile || '',
@@ -213,6 +261,7 @@ function doPost(e) {
       new Date(),
       photoUrl,
       viewUrl,
+      email,
     ]);
 
     return ContentService.createTextOutput(

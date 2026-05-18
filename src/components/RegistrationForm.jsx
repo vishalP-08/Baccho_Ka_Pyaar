@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { saveRegistration } from '../services/firestore'
 import SuccessPopup from './SuccessPopup'
 
-const EMPTY = { fullName: '', mobile: '', rollNumber: '' }
+const EMPTY = { fullName: '', mobile: '', email: '', rollNumber: '' }
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024 // 10 MB
 
 /** Programmatically start a file download in a new tab. */
@@ -30,6 +30,12 @@ function validate(values, photo, agree) {
     errors.mobile = 'Mobile number is required'
   } else if (!/^[6-9]\d{9}$/.test(values.mobile.trim())) {
     errors.mobile = 'Enter a valid 10-digit Indian mobile number'
+  }
+
+  if (!values.email.trim()) {
+    errors.email = 'Email is required (we email your timetable here)'
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+    errors.email = 'Enter a valid email address'
   }
 
   if (!values.rollNumber.trim()) {
@@ -74,6 +80,14 @@ const FIELDS = [
     icon: '📱',
     inputMode: 'numeric',
     maxLength: 10,
+  },
+  {
+    name: 'email',
+    label: 'Email',
+    type: 'email',
+    placeholder: 'you@example.com',
+    icon: '✉️',
+    inputMode: 'email',
   },
   {
     name: 'rollNumber',
@@ -137,6 +151,7 @@ export default function RegistrationForm() {
     setTouched({
       fullName: true,
       mobile: true,
+      email: true,
       rollNumber: true,
       photo: true,
       agree: true,

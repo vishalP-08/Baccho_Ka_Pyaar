@@ -43,7 +43,11 @@ export default function SuccessPopup({ open, name, pdf, onClose }) {
                 <p className="text-sm text-slate-200">
                   📄 Your personalised <strong>test timetable</strong> is
                   downloading. If it didn&apos;t start automatically, use the
-                  buttons below.
+                  button below.
+                </p>
+                <p className="mt-2 text-xs text-slate-400">
+                  ✉️ A copy has also been emailed to you — check your inbox
+                  (and spam folder).
                 </p>
                 <a
                   href={pdf.downloadUrl}
