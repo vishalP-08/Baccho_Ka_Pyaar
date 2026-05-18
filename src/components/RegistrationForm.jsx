@@ -6,6 +6,17 @@ import SuccessPopup from './SuccessPopup'
 const EMPTY = { fullName: '', mobile: '', rollNumber: '' }
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024 // 10 MB
 
+/** Programmatically start a file download in a new tab. */
+function startDownload(url) {
+  const a = document.createElement('a')
+  a.href = url
+  a.target = '_blank'
+  a.rel = 'noopener noreferrer'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
 function validate(values, photo, agree) {
   const errors = {}
 
@@ -83,6 +94,7 @@ export default function RegistrationForm() {
   const [submitting, setSubmitting] = useState(false)
   const [popup, setPopup] = useState(false)
   const [submittedName, setSubmittedName] = useState('')
+  const [pdf, setPdf] = useState(null)
   const [serverError, setServerError] = useState('')
 
   const revalidate = (v = values, p = photo, a = agree) =>
@@ -133,8 +145,10 @@ export default function RegistrationForm() {
 
     try {
       setSubmitting(true)
-      await saveRegistration({ ...values, photo })
+      const result = await saveRegistration({ ...values, photo })
       setSubmittedName(values.fullName)
+      setPdf(result?.pdf || null)
+      if (result?.pdf?.downloadUrl) startDownload(result.pdf.downloadUrl)
       setPopup(true)
       setValues(EMPTY)
       setPhoto(null)
@@ -365,6 +379,7 @@ export default function RegistrationForm() {
       <SuccessPopup
         open={popup}
         name={submittedName}
+        pdf={pdf}
         onClose={() => setPopup(false)}
       />
     </section>

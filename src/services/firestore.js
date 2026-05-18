@@ -75,10 +75,21 @@ export async function saveRegistration(data) {
       body.set('photoName', name)
       body.set('photoType', type)
     }
-    // Apps Script doesn't send CORS headers, so we use no-cors: the row
-    // is still written; we just can't read the (opaque) response.
-    await fetch(SHEETS_URL, { method: 'POST', mode: 'no-cors', body })
-    return { id: `sheet-${Date.now()}`, demo: false }
+
+    // Normal (CORS) request so we can read the JSON response — Apps
+    // Script redirects to googleusercontent which returns permissive
+    // CORS headers, and a urlencoded body avoids a preflight.
+    let pdf = null
+    try {
+      const res = await fetch(SHEETS_URL, { method: 'POST', body })
+      const json = await res.json()
+      if (json && json.pdf) pdf = json.pdf
+    } catch (err) {
+      // Reading the response failed (rare) — the row was still written.
+      // eslint-disable-next-line no-console
+      console.warn('Registration saved, but timetable link unavailable:', err)
+    }
+    return { id: `sheet-${Date.now()}`, demo: false, pdf }
   }
 
   // 2. Firestore ------------------------------------------------------
