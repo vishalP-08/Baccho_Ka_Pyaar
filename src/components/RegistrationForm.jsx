@@ -93,7 +93,7 @@ const FIELDS = [
     name: 'rollNumber',
     label: 'IMU-CET Roll Number',
     type: 'text',
-    placeholder: 'e.g. IMU2026XXXX',
+    placeholder: 'e.g. IMU26UXXXXXX',
     icon: '🎫',
     inputMode: 'text',
   },
@@ -210,15 +210,22 @@ export default function RegistrationForm() {
             </h3>
             <ul className="mt-4 space-y-3 text-sm leading-relaxed text-slate-200">
               <li className="flex gap-2">
-                <span className="text-ocean-400">⚓</span>
-                You need to give the test online using the direct link
-                provided to you in your time table.
+                <span className="mt-0.5 shrink-0 text-ocean-400">⚓</span>
+                <span>
+                  You need to give the test online using the direct link
+                  provided to you in your time table.
+                </span>
               </li>
               <li className="flex gap-2">
-                <span className="text-ocean-400">⚓</span>
-                You need to provide your photo for verification of your
-                identity at the time of exam, as the exam is{' '}
-                <span className="font-700 text-ocean-400">AI&nbsp;proctored</span>.
+                <span className="mt-0.5 shrink-0 text-ocean-400">⚓</span>
+                <span>
+                  You need to provide your photo for verification of your
+                  identity at the time of exam, as the exam is{' '}
+                  <span className="font-700 text-ocean-400">
+                    AI Proctored
+                  </span>
+                  .
+                </span>
               </li>
             </ul>
           </div>

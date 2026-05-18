@@ -4,10 +4,10 @@
  * On each website registration this script:
  *   1. Appends the student to THIS Google Sheet
  *   2. Saves their passport photo to a Drive folder
- *   3. Generates a personalised PDF TIMETABLE (name, number, roll no,
- *      test dates/times and the DIRECT TEST LINKS you set below)
- *   4. Returns the PDF download + view links to the website, which
- *      auto-downloads the PDF for the student.
+ *   3. Generates a personalised, branded PDF TIMETABLE (logo, name,
+ *      number, roll no, test dates/times and the DIRECT TEST LINKS)
+ *   4. Emails the PDF to the student and returns its links so the
+ *      website can auto-download it.
  *
  * Sheet columns (matches your headers):
  *   A Full Name | B Mobile Number | C IMU-CET Roll Number
@@ -23,13 +23,13 @@ var TESTS = [
     name: 'Mock Test 1',
     date: '20th May 2026',
     time: '10:00 AM IST',
-    link: 'PASTE_TEST_1_DIRECT_LINK_HERE',
+    link: 'https://online-test.classplusapp.com/?testId=6a09b15bd20cb58564dff1e3&defaultLanguage=en',
   },
   {
     name: 'Mock Test 2',
     date: '22nd May 2026',
     time: '10:00 AM IST',
-    link: 'PASTE_TEST_2_DIRECT_LINK_HERE',
+    link: 'https://online-test.classplusapp.com/?testId=6a09b15bd20cb58564dff1e3&defaultLanguage=en',
   },
 ];
 
@@ -41,6 +41,10 @@ var TIMETABLE_FOLDER_ID = '';
 // '' = first tab (gid=0). Set a tab name to override.
 var SHEET_NAME = '';
 
+// Logo shown on the PDF.
+var BM_LOGO_URL =
+  'https://storebybm.com/cdn/shop/files/66616e0050ff99708325d1d7.png?v=1740412439&width=140';
+
 /**
  * ─────────────────────────────────────────────────────────────
  * SETUP (one time):
@@ -48,7 +52,7 @@ var SHEET_NAME = '';
  *   2. In your sheet: Extensions → Apps Script → paste this whole file.
  *   3. Deploy → New deployment → (⚙) Web app
  *        Execute as: Me   |   Who has access: Anyone   → Deploy
- *      Authorize → allow Sheets + Drive + Docs access.
+ *      Authorize → allow Sheets + Drive + Docs + Mail access.
  *   4. Copy the Web app URL (ends /exec).
  *   5. Netlify → Environment variables → VITE_SHEETS_URL = that URL
  *      → Trigger deploy. Add same line to local .env.
@@ -77,77 +81,184 @@ function makeAnyoneViewable_(file) {
   }
 }
 
+/** Clears the default empty paragraph from a table cell. */
+function clearCell_(cell) {
+  while (cell.getNumChildren() > 0) {
+    cell.removeChild(cell.getChild(0));
+  }
+}
+
 /** Build a personalised timetable PDF and return the Drive file. */
 function buildTimetablePdf_(p) {
+  var BRAND_GOLD = '#C99A1F';
+  var DARK = '#111111';
+  var LIGHT_BG = '#F8F6F0';
+  var BORDER = '#D8C58A';
+  var BLUE = '#1155CC';
+
   var doc = DocumentApp.create('Timetable - ' + (p.fullName || 'Student'));
   var body = doc.getBody();
-  body.setMarginTop(36).setMarginBottom(36).setMarginLeft(48).setMarginRight(48);
 
-  var title = body.appendParagraph('BUDDING MARINERS');
-  title.setHeading(DocumentApp.ParagraphHeading.TITLE);
-  title.editAsText().setForegroundColor('#C99A1F');
+  body.setMarginTop(28).setMarginBottom(32).setMarginLeft(42).setMarginRight(42);
 
-  var sub = body.appendParagraph('IMU-CET 2026 — Mock Test Timetable');
-  sub.setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  /**************** HEADER WITH LOGO ****************/
+  var headerTable = body.appendTable([['', '']]);
+  headerTable.setBorderWidth(0);
+
+  var leftCell = headerTable.getCell(0, 0);
+  var rightCell = headerTable.getCell(0, 1);
+  clearCell_(leftCell);
+  clearCell_(rightCell);
+  leftCell.setWidth(360);
+  rightCell.setWidth(110);
+
+  var title = leftCell.appendParagraph('BUDDING MARINERS');
+  title.setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  title.editAsText().setForegroundColor(BRAND_GOLD).setBold(true).setFontSize(22);
+
+  var sub = leftCell.appendParagraph('IMU-CET 2026 — Mock Test Timetable');
+  sub.editAsText().setForegroundColor(DARK).setBold(true).setFontSize(13);
+
+  var line = leftCell.appendParagraph(
+    'Official mock test schedule for registered candidates',
+  );
+  line.editAsText().setForegroundColor('#555555').setFontSize(9);
+
+  try {
+    var logoBlob = UrlFetchApp.fetch(BM_LOGO_URL)
+      .getBlob()
+      .setName('BM_Logo.png');
+    var logoPara = rightCell.appendParagraph('');
+    logoPara.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+    var logo = logoPara.appendInlineImage(logoBlob);
+    var ow = logo.getWidth();
+    var oh = logo.getHeight();
+    logo.setWidth(82);
+    if (ow && oh) logo.setHeight(Math.round((82 * oh) / ow));
+  } catch (err) {
+    rightCell
+      .appendParagraph('BM')
+      .setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+  }
 
   body.appendParagraph('');
-  body.appendParagraph('Candidate Details').setHeading(
-    DocumentApp.ParagraphHeading.HEADING3,
-  );
-  body.appendParagraph('Name:  ' + (p.fullName || ''));
-  body.appendParagraph('Mobile Number:  ' + (p.mobile || ''));
-  body.appendParagraph('IMU-CET Roll Number:  ' + (p.rollNumber || ''));
+
+  /**************** CANDIDATE DETAILS ****************/
+  var cTitle = body.appendParagraph('Candidate Details');
+  cTitle.setHeading(DocumentApp.ParagraphHeading.HEADING3);
+  cTitle.editAsText().setForegroundColor(DARK).setBold(true);
+
+  var detailsTable = body.appendTable([
+    ['Name', p.fullName || ''],
+    ['Mobile Number', p.mobile || ''],
+    ['IMU-CET Roll Number', p.rollNumber || ''],
+  ]);
+  detailsTable.setBorderColor(BORDER);
+  detailsTable.setBorderWidth(1);
+
+  for (var i = 0; i < 3; i++) {
+    var lc = detailsTable.getCell(i, 0);
+    var vc = detailsTable.getCell(i, 1);
+    lc.setBackgroundColor(LIGHT_BG);
+    lc.setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(8).setPaddingRight(8);
+    vc.setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(8).setPaddingRight(8);
+    lc.editAsText().setBold(true).setForegroundColor(DARK).setFontSize(10);
+    vc.editAsText().setForegroundColor(DARK).setFontSize(10);
+  }
 
   body.appendParagraph('');
-  body.appendParagraph('Your Test Schedule').setHeading(
-    DocumentApp.ParagraphHeading.HEADING3,
-  );
+
+  /**************** TEST SCHEDULE ****************/
+  var sTitle = body.appendParagraph('Your Test Schedule');
+  sTitle.setHeading(DocumentApp.ParagraphHeading.HEADING3);
+  sTitle.editAsText().setForegroundColor(DARK).setBold(true);
 
   var rows = [['Test', 'Date', 'Time', 'Direct Test Link']];
   TESTS.forEach(function (t) {
-    rows.push([t.name, t.date, t.time, t.link]);
+    rows.push([t.name, t.date, t.time, 'Open Test']);
   });
-  var table = body.appendTable(rows);
 
-  // Style header row + make link cells clickable.
+  var table = body.appendTable(rows);
+  table.setBorderColor(BORDER);
+  table.setBorderWidth(1);
+
   for (var c = 0; c < 4; c++) {
-    table.getCell(0, c).editAsText().setBold(true);
+    var hc = table.getCell(0, c);
+    hc.setBackgroundColor(BRAND_GOLD);
+    hc.setPaddingTop(7).setPaddingBottom(7).setPaddingLeft(6).setPaddingRight(6);
+    hc.editAsText().setBold(true).setForegroundColor('#FFFFFF').setFontSize(9);
   }
+
   for (var r = 1; r < rows.length; r++) {
-    var linkText = table.getCell(r, 3).editAsText();
+    for (var col = 0; col < 4; col++) {
+      var cell = table.getCell(r, col);
+      cell.setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(6).setPaddingRight(6);
+      if (r % 2 === 0) cell.setBackgroundColor('#FBFAF6');
+      cell.editAsText().setFontSize(9).setForegroundColor(DARK);
+    }
+    var linkCellText = table.getCell(r, 3).editAsText();
     var url = TESTS[r - 1].link;
-    if (linkText.getText().length > 0) {
-      linkText.setLinkUrl(0, linkText.getText().length - 1, url);
-      linkText.setForegroundColor('#1155CC');
+    if (url && linkCellText.getText().length > 0) {
+      linkCellText.setLinkUrl(0, linkCellText.getText().length - 1, url);
+      linkCellText.setForegroundColor(BLUE).setBold(true).setUnderline(true);
     }
   }
 
   body.appendParagraph('');
-  body.appendParagraph('Important Instructions').setHeading(
-    DocumentApp.ParagraphHeading.HEADING3,
-  );
-  body
-    .appendListItem(
-      'You need to give the test online using the direct link provided ' +
-        'above in your time table.',
-    )
-    .setGlyphType(DocumentApp.GlyphType.BULLET);
-  body
-    .appendListItem(
-      'You need to provide your photo for verification of your identity ' +
-        'at the time of exam, as the exam is AI proctored.',
-    )
-    .setGlyphType(DocumentApp.GlyphType.BULLET);
+
+  /**************** INSTRUCTIONS ****************/
+  var iTitle = body.appendParagraph('Important Instructions');
+  iTitle.setHeading(DocumentApp.ParagraphHeading.HEADING3);
+  iTitle.editAsText().setForegroundColor(DARK).setBold(true);
+
+  var instructionRows = [
+    [
+      '1.',
+      'You need to give the test online using the direct link provided above in your timetable.',
+    ],
+    [
+      '2.',
+      'You need to provide your photo for verification of your identity at the time of Mock Test, as the exam is AI Proctored.',
+    ],
+    [
+      '3.',
+      'Join the test only during the allotted test window mentioned in the schedule.',
+    ],
+  ];
+
+  var instructionTable = body.appendTable(instructionRows);
+  instructionTable.setBorderColor(BORDER);
+  instructionTable.setBorderWidth(1);
+
+  for (var ir = 0; ir < instructionRows.length; ir++) {
+    var numCell = instructionTable.getCell(ir, 0);
+    var textCell = instructionTable.getCell(ir, 1);
+    numCell.setWidth(32);
+    numCell.setBackgroundColor(LIGHT_BG);
+    numCell.setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(6).setPaddingRight(6);
+    textCell.setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(6).setPaddingRight(6);
+    numCell.editAsText().setBold(true).setForegroundColor(BRAND_GOLD).setFontSize(10);
+    textCell.editAsText().setForegroundColor(DARK).setFontSize(9);
+  }
 
   body.appendParagraph('');
+
+  /**************** FOOTER ****************/
+  var divider = body.appendParagraph(
+    '────────────────────────────────────────',
+  );
+  divider.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  divider.editAsText().setForegroundColor('#DDDDDD');
+
   var foot = body.appendParagraph(
     'All the best, future mariner! — Budding Mariners',
   );
-  foot.editAsText().setItalic(true).setForegroundColor('#666666');
+  foot.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  foot.editAsText().setItalic(true).setForegroundColor('#666666').setFontSize(10);
 
   doc.saveAndClose();
 
-  // Export the Doc as a PDF into the timetable folder, then bin the Doc.
+  /**************** EXPORT PDF ****************/
   var docFile = DriveApp.getFileById(doc.getId());
   var pdfBlob = docFile.getAs('application/pdf');
   var safeRoll = String(p.rollNumber || 'NA').replace(/[^\w-]/g, '_');
@@ -160,7 +271,7 @@ function buildTimetablePdf_(p) {
   );
   var pdfFile = folder.createFile(pdfBlob);
   makeAnyoneViewable_(pdfFile);
-  docFile.setTrashed(true); // remove the intermediate Google Doc
+  docFile.setTrashed(true);
 
   return pdfFile;
 }
@@ -241,7 +352,7 @@ function doPost(e) {
             '<p><strong>Instructions:</strong><br>' +
             '• Give the test online using the direct link in your ' +
             'timetable.<br>' +
-            '• Keep your photo ready — the exam is AI proctored and your ' +
+            '• Keep your photo ready — the exam is AI Proctored and your ' +
             'identity will be verified.</p>' +
             '<p>All the best! — Budding Mariners ⚓</p>',
           attachments: [pdfFile.getBlob()],

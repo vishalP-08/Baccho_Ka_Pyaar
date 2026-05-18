@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 
 export default function SuccessPopup({ open, name, pdf, onClose }) {
+  const hasPdf = pdf && pdf.downloadUrl
+
   return (
     <AnimatePresence>
       {open && (
@@ -21,6 +23,14 @@ export default function SuccessPopup({ open, name, pdf, onClose }) {
             transition={{ type: 'spring', stiffness: 220, damping: 18 }}
             className="glass-strong relative w-full max-w-md rounded-3xl p-10 text-center"
           >
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              ✕
+            </button>
+
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -29,7 +39,7 @@ export default function SuccessPopup({ open, name, pdf, onClose }) {
             >
               ⚓
             </motion.div>
-            <h3 className="mt-6 font-display text-3xl font-700 text-white">
+            <h3 className="mt-6 font-display text-3xl font-800 text-white">
               You&apos;re aboard{name ? `, ${name.split(' ')[0]}` : ''}! 🎉
             </h3>
             <p className="mt-3 text-slate-300">
@@ -38,7 +48,7 @@ export default function SuccessPopup({ open, name, pdf, onClose }) {
               &amp; 22nd!
             </p>
 
-            {pdf && pdf.downloadUrl ? (
+            {hasPdf ? (
               <div className="mt-6 rounded-2xl border border-ocean-400/25 bg-ocean-400/[0.06] p-5">
                 <p className="text-sm text-slate-200">
                   📄 Your personalised <strong>test timetable</strong> is
@@ -68,14 +78,11 @@ export default function SuccessPopup({ open, name, pdf, onClose }) {
                   </a>
                 )}
               </div>
-            ) : null}
-
-            <button
-              onClick={onClose}
-              className="btn-glow mt-6 w-full"
-            >
-              Set Sail ⛵
-            </button>
+            ) : (
+              <button onClick={onClose} className="btn-glow mt-8 w-full">
+                Set Sail ⛵
+              </button>
+            )}
           </motion.div>
         </motion.div>
       )}
