@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { saveRegistration } from '../services/firestore'
 import SuccessPopup from './SuccessPopup'
@@ -106,6 +106,25 @@ export default function RegistrationForm() {
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  // Friendly countdown shown while the timetable PDF is generated.
+  const ESTIMATE = 20
+  const [secsLeft, setSecsLeft] = useState(0)
+  const timerRef = useRef(null)
+
+  const startTimer = () => {
+    setSecsLeft(ESTIMATE)
+    clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setSecsLeft((s) => (s > 1 ? s - 1 : 1))
+    }, 1000)
+  }
+  const stopTimer = () => {
+    clearInterval(timerRef.current)
+    timerRef.current = null
+    setSecsLeft(0)
+  }
+  useEffect(() => () => clearInterval(timerRef.current), [])
+
   const [popup, setPopup] = useState(false)
   const [submittedName, setSubmittedName] = useState('')
   const [pdf, setPdf] = useState(null)
@@ -160,6 +179,7 @@ export default function RegistrationForm() {
 
     try {
       setSubmitting(true)
+      startTimer()
       const result = await saveRegistration({ ...values, photo })
       setSubmittedName(values.fullName)
       setPdf(result?.pdf || null)
@@ -177,6 +197,7 @@ export default function RegistrationForm() {
       )
     } finally {
       setSubmitting(false)
+      stopTimer()
     }
   }
 
@@ -388,8 +409,32 @@ export default function RegistrationForm() {
             disabled={submitting}
             className="btn-glow mt-8 w-full"
           >
-            {submitting ? 'Securing your seat…' : 'Register Now 🚀'}
+            {submitting
+              ? secsLeft > 1
+                ? `Generating your timetable… ${secsLeft}s`
+                : 'Almost done…'
+              : 'Register Now 🚀'}
           </button>
+
+          {submitting && (
+            <div className="mt-4">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-ocean-400 transition-[width] duration-1000 ease-linear"
+                  style={{
+                    width: `${Math.min(
+                      95,
+                      ((ESTIMATE - secsLeft) / ESTIMATE) * 100,
+                    )}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-center text-xs text-ocean-400">
+                ⏳ Building your personalised PDF &amp; emailing it — please
+                keep this page open.
+              </p>
+            </div>
+          )}
 
           <p className="mt-4 text-center text-xs text-slate-500">
             We respect your privacy. Details are used only for mock test
